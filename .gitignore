@@ -1,0 +1,23 @@
+env/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.swp
+
+# OpenFOAM case run artifacts (test/example cases will generate these)
+processor[0-9]*/
+postProcessing/
+*.OpenFOAM
+log.*
+dynamicCode/
+!/tests/fixtures/**/processor[0-9]*/
+!/tests/fixtures/**/postProcessing/
+
+# third-party CHEMKIN mechanisms the Mechanism.from_chemkin() tests
+# download on first use (tests/cantera/chemkin_mechanisms.py)
+/tests/cantera/fixtures/chemkin/downloaded/

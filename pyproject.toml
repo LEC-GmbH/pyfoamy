@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyfoamy"
+dynamic = ["version"]
+description = "Python interface to OpenFOAM: dictionary/field/mesh I/O, case setup, thermophysical data."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "LICENSE-pyJac"]
+authors = [{ name = "LEC - Large Engines Competence Center" }]
+requires-python = ">=3.10"
+dependencies = ["pyparsing>=3.1", "numpy"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.optional-dependencies]
+thermo = ["cantera"]
+pandas = ["pandas"]
+dev = ["pytest"]
+
+[tool.setuptools.dynamic]
+version = { attr = "pyfoamy.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not tutorials and not openfoam and not slow'"
+markers = [
+    "tutorials: sweeps an OpenFOAM tutorials tree",
+    "openfoam: needs a sourced OpenFOAM install",
+    "slow: takes more than a few seconds",
+]

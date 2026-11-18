@@ -1,0 +1,7 @@
+# Selection   : chamberCells
+# Cells       : 4627358
+# Volume      : 4.160352e-03
+# Time        	volIntegrate(rho)	volIntegrate(b)	volIntegrate(bXiQdot)
+0             	3.108030e-03	4.160352e-03
+0.1           	3.108030e-03	4.160352e-03	0.000000e+00
+0.2           	3.108030e-03	4.160352e-03	0.000000e+00

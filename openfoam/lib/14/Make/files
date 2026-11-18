@@ -1,0 +1,10 @@
+laminarFlameSpeeds/piecewisePhi/piecewisePhi.C
+
+Function2/nonUniformTable2/nonUniformTable2.C
+
+reactionRates/pLogReactions.C
+
+mixtures/valueBInhomogeneousMixture/valueBRhoMulticomponentThermos.C
+mixtures/valueUInhomogeneousEGRMixture/valueURhoMulticomponentThermos.C
+
+LIB = $(FOAM_USER_LIBBIN)/libpyfoamy

@@ -1,0 +1,4 @@
+# Engine Motion State
+# Time        	piston from TDC	piston speed  	piston displacement	piston clearance	exhaustPort1Valve1 lift	exhaustPort1Valve1 speed	exhaustPort1Valve1 displacement	intakePort1Valve1 lift	intakePort1Valve1 speed	intakePort1Valve1 displacement
+128.75        	7.236187e-02	-4.027700e+00	-5.163718e-08	0.000000e+00	2.002125e-04	-2.351700e-01	-3.015000e-09	0.000000e+00	0.000000e+00	0.000000e+00
+128.7501      	7.236192e-02	-4.027693e+00	-5.163709e-08	5.163709e-08	2.002155e-04	-2.351700e-01	-3.015000e-09	0.000000e+00	0.000000e+00	0.000000e+00

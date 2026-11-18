@@ -1,0 +1,6 @@
+# Selection   : cylinderCells
+# Cells       : 65872
+# Volume      : 6.799264e-05
+# Time        	volAverage(p)	volAverage(T)	volAverage(rho)	volAverage(T.u)
+340           	3.286122e+06	7.785136e+02	1.419882e+01	7.785136e+02
+340.142857    	3.302532e+06	7.791817e+02	1.425767e+01	7.791817e+02

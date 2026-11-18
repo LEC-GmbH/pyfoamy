@@ -1,0 +1,6 @@
+# Selection   : cylinderCells
+# Cells       : 1454117
+# Volume      : 5.445731e-04
+# Time        	volAverage(p)	volAverage(T)	volAverage(rho)	volAverage(Qdot)	volAverage(k)	volAverage(epsilon)	volAverage(omega)	volAverage(nut)	volAverage(magU)
+129           	9.802637e+04	3.042450e+02	1.117789e+00	0.000000e+00	1.984381e+01	5.228289e+03	3.671277e+03	2.792721e-02	6.109285e-01
+130           	9.730952e+04	3.038924e+02	1.110957e+00	0.000000e+00	1.928081e+01	4.006078e+03	3.305289e+03	2.415502e-02	2.835191e+00
