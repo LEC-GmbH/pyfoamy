@@ -20,7 +20,8 @@ first so the design can be agreed before the work is done.
 - `src/pyfoamy/models/` - solver setups (`SolverSetup.build()` assembles the
   case from per-solver hooks), schemes, linear solvers, turbulence, thermo.
 - `src/pyfoamy/cantera/` - mechanisms, species thermo/transport fits,
-  reactions, laminar flame speed (`laminar_flame_speed.py` sweep and cache,
+  reactions, the mechanism-conversion command line (`__main__.py`),
+  laminar flame speed (`laminar_flame_speed.py` sweep and cache,
   `_lfs_*.py` solver, fits, validation; optional `cantera`; never
   imported by `pyfoamy/__init__.py`).
 - `src/pyfoamy/pyjac/` - port of pyJac 1.0.6 (analytical Jacobian C source).

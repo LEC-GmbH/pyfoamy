@@ -5,6 +5,18 @@ minor version can change the API.
 
 ## Unreleased
 
+## 0.4.1 - 2026-11-19
+
+- `python -m pyfoamy.cantera`: converts a Cantera YAML, CTI or CHEMKIN
+  mechanism to OpenFOAM `reactions` and `thermo` files, with the thermo and
+  transport fit as options and one-line error messages.
+- `Mechanism.from_cti()` loads a legacy Cantera CTI mechanism.
+- `Mechanism.from_chemkin()` no longer prints ck2yaml's log; what remains
+  after a successful conversion is a warning.
+- Transport fits name the specie in their warnings and reject a mechanism
+  without transport data with a `ValueError`.
+- `examples/convert_mechanism.py`.
+
 ## 0.4.0 - 2026-11-18
 
 - `pyfoamyPengRobinsonGas` in `libpyfoamy`: Peng-Robinson with van der

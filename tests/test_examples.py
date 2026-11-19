@@ -14,6 +14,7 @@ _MARKS = {
 }
 _IMPORTS = {
     "example_species_data.py": "cantera",
+    "convert_mechanism.py": "cantera",
     "create_xi_fluid.py": "cantera",
 }
 

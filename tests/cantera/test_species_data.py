@@ -536,11 +536,23 @@ def test_sutherland_fit_minimises_relative_error():
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        fit = _sutherland_fit(mu, None, None, 300.0, 5000.0)
+        fit = _sutherland_fit(mu, None, None, 300.0, 5000.0, "X")
     Ts = np.linspace(300.0, 5000.0, 50)
     real = np.array([mu(T) for T in Ts])
     pred = fit["As"] * np.sqrt(Ts) / (1 + fit["Ts"] / Ts)
     assert np.max(np.abs(pred - real) / real) < 0.08
+
+
+def test_transport_fit_warnings_name_the_specie():
+    db = ThermoDatabase("h2o2.yaml", transport_model="sutherland")
+    with pytest.warns(UserWarning, match="^H2: sutherland transport fit"):
+        db.species(["H2"])
+
+
+def test_transport_fit_rejects_a_mechanism_without_transport_data(h2):
+    mech = Mechanism.from_chemkin(h2.mechanism, thermo_file=h2.thermo)
+    with pytest.raises(ValueError, match="has no transport data"):
+        ThermoDatabase(mech).species(["H2"])
 
 
 def test_combustion_group_is_the_lump_group_of_the_three_streams():

@@ -58,8 +58,28 @@ frame = table.to_pandas()
 ```
 
 More in `examples/`: reading and editing dictionaries, reading meshes,
-species data from a Cantera mechanism, and a complete `XiFluid` case written
-from Python.
+species data from a Cantera mechanism, converting a mechanism, and a complete
+`XiFluid` case written from Python.
+
+## Mechanism conversion
+
+A Cantera YAML, legacy Cantera CTI or CHEMKIN mechanism to OpenFOAM's
+`reactions` and `thermo` files (needs `.[thermo]`):
+
+```sh
+python -m pyfoamy.cantera gri30.yaml -o constant
+python -m pyfoamy.cantera mech.inp --thermo therm.dat \
+    --transport tran.dat -o constant
+python -m pyfoamy.cantera old.cti --thermo-model hPolynomial \
+    --transport-model logPolynomial --T-low 300 --T-high 3000
+```
+
+`#include "thermo"` in `constant/physicalProperties` and `#include
+"reactions"` in `constant/chemistryProperties`. A CTI or CHEMKIN input is
+also written as Cantera YAML next to them. By default all species are refit
+to one shared `Tcommon` (`--per-species` keeps each NASA7 polynomial) with
+Sutherland transport; `--help` lists the options, and
+`examples/convert_mechanism.py` does the same from Python.
 
 ## OpenFOAM library
 

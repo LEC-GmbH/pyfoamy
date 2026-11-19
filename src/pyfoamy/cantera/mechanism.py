@@ -1,7 +1,9 @@
 """A loaded Cantera mechanism and the facts derived from it."""
 
 import contextlib
+import io
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional
 
@@ -33,6 +35,7 @@ _BLEND_THRESHOLD = 1e-6
 _DRY_AIR_MOLE = {"O2": 0.21, "N2": 0.79}
 _ELEMENT_SINKS = {"C": "CO2", "H": "H2O", "N": "N2", "S": "SO2"}
 _TREF = 298.15
+_PERMISSIVE_HINT = "(retry from_chemkin() with permissive=True to allow this)"
 
 
 class Mechanism:
@@ -144,6 +147,102 @@ class Mechanism:
             if path is not None and not path.is_file():
                 raise ValueError(f"chemkin {role} not found: {path}")
 
+        def convert(yaml_path):
+            # ck2yaml logs to stdout; its errors are repeated in InputError.
+            output = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(output):
+                    ck2yaml.convert(
+                        str(mechanism_file),
+                        thermo_file=(
+                            str(thermo_file) if thermo_file else None
+                        ),
+                        transport_file=(
+                            str(transport_file) if transport_file
+                            else None
+                        ),
+                        out_name=str(yaml_path),
+                        quiet=True,
+                        permissive=permissive,
+                    )
+            except ck2yaml.InputError as exc:
+                # Translate ck2yaml's CLI flag hint to this method's
+                # keyword.
+                if "--permissive" in str(exc):
+                    exc.args = (f"{exc}\n\n{_PERMISSIVE_HINT}",)
+                raise
+            except Exception as exc:
+                raise ValueError(
+                    f"could not convert chemkin mechanism "
+                    f"{mechanism_file} to Cantera format: {exc}"
+                ) from exc
+            if output.getvalue().strip():
+                warnings.warn(f"ck2yaml: {output.getvalue().strip()}")
+
+        return cls._from_converted(
+            f"chemkin mechanism {mechanism_file}", convert, out_path,
+            "the CHEMKIN DUPLICATE keyword", reference_pressure,
+        )
+
+    @classmethod
+    def from_cti(
+        cls, cti_file, out_path=None, reference_pressure=None,
+    ) -> "Mechanism":
+        """Converts a legacy Cantera CTI mechanism to YAML with `cti2yaml`
+        and loads it.
+
+        Args:
+            cti_file: CTI mechanism file.
+            out_path: Keep the converted YAML here; by default it goes to a
+                temporary file deleted after loading.
+
+        Raises:
+            ImportError: If the installed Cantera no longer ships
+                `cti2yaml`.
+            ValueError: If the file is missing or `cti2yaml` rejects it (its
+                message, with the offending line, is kept).
+            cantera.CanteraError: If Cantera refuses the converted mechanism,
+                e.g. for a species without data or undeclared duplicate
+                reactions.
+        """
+        require_cantera()
+        try:
+            from cantera import cti2yaml
+        except ImportError as exc:
+            raise ImportError(
+                f"CTI input needs a Cantera that ships cti2yaml, "
+                f"not {ct.__version__}"
+            ) from exc
+
+        cti_file = Path(cti_file)
+        if not cti_file.is_file():
+            raise ValueError(f"cti mechanism file not found: {cti_file}")
+
+        def convert(yaml_path):
+            output = io.StringIO()
+            try:
+                # cti2yaml prints a syntax error's location, then exits.
+                with contextlib.redirect_stdout(output), \
+                        contextlib.redirect_stderr(output):
+                    cti2yaml.convert(
+                        filename=str(cti_file), output_name=str(yaml_path),
+                    )
+            except (Exception, SystemExit) as exc:
+                raise ValueError(
+                    f"could not convert cti mechanism {cti_file} to "
+                    f"Cantera format: {output.getvalue().strip() or exc}"
+                ) from exc
+
+        return cls._from_converted(
+            f"cti mechanism {cti_file}", convert, out_path,
+            "options='duplicate'", reference_pressure,
+        )
+
+    @classmethod
+    def _from_converted(
+        cls, source, convert, out_path, duplicate_marker,
+        reference_pressure,
+    ) -> "Mechanism":
         keep = out_path is not None
         if keep:
             yaml_path = Path(out_path)
@@ -154,35 +253,7 @@ class Mechanism:
                 yaml_path = Path(yaml_file.name)
 
         try:
-            try:
-                ck2yaml.convert(
-                    str(mechanism_file),
-                    thermo_file=(
-                        str(thermo_file) if thermo_file else None
-                    ),
-                    transport_file=(
-                        str(transport_file) if transport_file
-                        else None
-                    ),
-                    out_name=str(yaml_path),
-                    quiet=True,
-                    permissive=permissive,
-                )
-            except ck2yaml.InputError as exc:
-                # Translate ck2yaml's CLI flag hint to this method's
-                # keyword.
-                if "--permissive" in str(exc):
-                    exc.args = (
-                        f"{exc}\n\n(retry from_chemkin() with "
-                        "permissive=True to allow this)",
-                    )
-                raise
-            except Exception as exc:
-                raise ValueError(
-                    f"could not convert chemkin mechanism "
-                    f"{mechanism_file} to Cantera format: {exc}"
-                ) from exc
-
+            convert(yaml_path)
             try:
                 return cls(
                     str(yaml_path),
@@ -190,16 +261,15 @@ class Mechanism:
                 )
             except ct.CanteraError as exc:
                 note = (
-                    f"chemkin mechanism {mechanism_file} converted "
-                    "to Cantera YAML successfully, but Cantera "
-                    "refused to load the result"
+                    f"{source} converted to Cantera YAML successfully, "
+                    "but Cantera refused to load the result"
                 )
                 if "duplicate reaction" in str(exc).lower():
                     note += (
                         " - these are genuinely duplicate reactions "
                         "as far as Cantera is concerned; if "
-                        "intentional, mark them with the CHEMKIN "
-                        "DUPLICATE keyword in the source file"
+                        f"intentional, mark them with {duplicate_marker} "
+                        "in the source file"
                     )
                 exc.args = (f"{note}:\n\n{exc}",)
                 raise

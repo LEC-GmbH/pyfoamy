@@ -1,12 +1,11 @@
 from decimal import Decimal
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 ct = pytest.importorskip("cantera")
 pytest.importorskip("numpy")
-from cantera import ck2yaml, yaml2ck  # noqa: E402
+from cantera import ck2yaml  # noqa: E402
 
 import pyfoamy.cantera.mechanism as mechanism_module  # noqa: E402
 from pyfoamy.cantera.mechanism import Mechanism  # noqa: E402
@@ -47,28 +46,6 @@ def _duplicate_reaction_chemkin(h2, tmp_path):
     path = tmp_path / "h2_duplicate_reaction.dat"
     path.write_text("\n".join(out) + "\n")
     return path
-
-
-@pytest.fixture(scope="module")
-def h2(tmp_path_factory):
-    """Cantera's h2o2.yaml as CHEMKIN files; the transport file spells
-    species lowercase, which ck2yaml rejects."""
-    out = tmp_path_factory.mktemp("h2_chemkin")
-    paths = SimpleNamespace(
-        mechanism=out / "mech.ck",
-        thermo=out / "thermo.ck",
-        transport=out / "tran.ck",
-        missing=out / "nope.dat",
-    )
-    yaml2ck.convert(
-        ct.Solution("h2o2.yaml"), mechanism_path=paths.mechanism,
-        thermo_path=paths.thermo, transport_path=paths.transport,
-    )
-    lines = paths.transport.read_text().splitlines()
-    paths.transport.write_text("\n".join(
-        line if line.startswith("!") else line.lower() for line in lines
-    ) + "\n")
-    return paths
 
 
 def _skip_unless_mechanism():
@@ -591,6 +568,52 @@ def test_from_chemkin_duplicate_reaction_does_not_leave_a_dangling_temp_file(
     with pytest.raises(ct.CanteraError):
         Mechanism.from_chemkin(str(duplicate), thermo_file=str(h2.thermo))
     assert list(tmp_path.glob("*.yaml")) == []
+
+
+def test_from_chemkin_keeps_ck2yamls_log_out_of_stdout(h2, tmp_path, capsys):
+    redundant = _redundant_species_chemkin(h2, tmp_path)
+    with pytest.raises(ck2yaml.InputError, match="multiple declarations"):
+        Mechanism.from_chemkin(str(redundant), thermo_file=str(h2.thermo))
+    assert capsys.readouterr().out == ""
+
+
+def test_from_cti_loads_a_converted_mechanism(h2_cti):
+    m = Mechanism.from_cti(h2_cti)
+    assert m.gas.species_names == ["H2", "O2", "H2O", "OH", "H", "O"]
+    assert m.gas.n_reactions == 1
+    assert not Path(m.mechanism_path).exists()
+
+
+def test_from_cti_keeps_the_yaml_when_out_path_given(h2_cti, tmp_path):
+    out_path = tmp_path / "kept.yaml"
+    Mechanism.from_cti(h2_cti, out_path=out_path)
+    assert ct.Solution(str(out_path)).n_species == 6
+
+
+def test_from_cti_rejects_a_missing_file(tmp_path):
+    with pytest.raises(ValueError, match="cti mechanism file not found"):
+        Mechanism.from_cti(tmp_path / "nope.cti")
+
+
+def test_from_cti_reports_a_syntax_error_with_its_line(tmp_path, capsys):
+    path = tmp_path / "syntax.cti"
+    path.write_text("ideal_gas(name='gas', elements='H O' species='H2')\n")
+    with pytest.raises(ValueError, match=r"(?s)syntax\.cti.*line 1"):
+        Mechanism.from_cti(path)
+    assert capsys.readouterr().out == ""
+    assert list(tmp_path.glob("*.yaml")) == []
+
+
+def test_from_cti_names_the_source_when_cantera_refuses_the_result(h2_cti):
+    h2_cti.write_text(h2_cti.read_text().replace(
+        "[1.7e13, 0.0, 47780.0])",
+        "[1.7e13, 0.0, 47780.0])\n"
+        "reaction('H2 + O2 <=> 2 OH', [1.7e13, 0.0, 47780.0])",
+    ))
+    with pytest.raises(
+        ct.CanteraError, match=r"cti mechanism .*h2\.cti.*options='duplicate'",
+    ):
+        Mechanism.from_cti(h2_cti)
 
 
 @pytest.mark.slow

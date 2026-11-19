@@ -324,13 +324,15 @@ def _report_continuity(
 # logPolynomial: same for ln(mu)/ln(kappa) vs ln(T), well conditioned
 #   as ln(T) stays below ~9.
 
-def _const_transport_fit(mu_func, kappa_func, cp_func, T_low, T_high) -> dict:
+def _const_transport_fit(
+    mu_func, kappa_func, cp_func, T_low, T_high, label,
+) -> dict:
     mu, kappa, cp = mu_func(_TREF), kappa_func(_TREF), cp_func(_TREF)
     return {"mu": mu, "Pr": mu * cp / kappa}
 
 
 def _sutherland_fit(
-    mu_func, kappa_func, cp_func, T_low, T_high, n_samples=30
+    mu_func, kappa_func, cp_func, T_low, T_high, label, n_samples=30
 ) -> dict:
     Ts = np.linspace(T_low, T_high, n_samples)
     mus = np.array([mu_func(T) for T in Ts])
@@ -346,7 +348,7 @@ def _sutherland_fit(
     max_rel_err = float(np.max(np.abs(pred - mus) / mus))
     if max_rel_err > _SUTHERLAND_WARN_THRESHOLD:
         warnings.warn(
-            f"sutherland transport fit has {max_rel_err:.1%} max "
+            f"{label}: sutherland transport fit has {max_rel_err:.1%} max "
             f"relative error over [{T_low:.0f},{T_high:.0f}]K - the "
             "2-parameter model may not suit this specie/range well"
         )
@@ -354,18 +356,19 @@ def _sutherland_fit(
 
 
 def _warn_if_poor_transport_fit(
-    model: str, name: str, pred, real, T_low: float, T_high: float
+    model: str, name: str, pred, real, T_low: float, T_high: float,
+    label: str,
 ) -> None:
     max_rel_err = float(np.max(np.abs(pred - real) / np.abs(real)))
     if max_rel_err > _TRANSPORT_POLYNOMIAL_WARN_THRESHOLD:
         warnings.warn(
-            f"{model} {name} transport fit has {max_rel_err:.1%} max "
+            f"{label}: {model} {name} transport fit has {max_rel_err:.1%} max "
             f"relative error over [{T_low:.0f},{T_high:.0f}]K"
         )
 
 
 def _polynomial_transport_fit(
-    mu_func, kappa_func, cp_func, T_low, T_high, n_samples=30
+    mu_func, kappa_func, cp_func, T_low, T_high, label, n_samples=30
 ) -> dict:
     Ts = np.linspace(T_low, T_high, n_samples)
     mus = np.array([mu_func(T) for T in Ts])
@@ -374,11 +377,11 @@ def _polynomial_transport_fit(
     kappa_coeffs = _fit_polynomial_coeffs(Ts, kappas, _POLY_DEGREE)
     _warn_if_poor_transport_fit(
         "polynomial", "mu", polynomial.polyval(Ts, mu_coeffs), mus,
-        T_low, T_high,
+        T_low, T_high, label,
     )
     _warn_if_poor_transport_fit(
         "polynomial", "kappa", polynomial.polyval(Ts, kappa_coeffs),
-        kappas, T_low, T_high,
+        kappas, T_low, T_high, label,
     )
     return {
         _poly_key("muCoeffs"): mu_coeffs,
@@ -387,7 +390,7 @@ def _polynomial_transport_fit(
 
 
 def _log_polynomial_transport_fit(
-    mu_func, kappa_func, cp_func, T_low, T_high, n_samples=30
+    mu_func, kappa_func, cp_func, T_low, T_high, label, n_samples=30
 ) -> dict:
     Ts = np.linspace(T_low, T_high, n_samples)
     log_T = np.log(Ts)
@@ -400,12 +403,12 @@ def _log_polynomial_transport_fit(
     _warn_if_poor_transport_fit(
         "logPolynomial", "mu",
         np.exp(polynomial.polyval(log_T, mu_log_coeffs)), mus,
-        T_low, T_high,
+        T_low, T_high, label,
     )
     _warn_if_poor_transport_fit(
         "logPolynomial", "kappa",
         np.exp(polynomial.polyval(log_T, kappa_log_coeffs)), kappas,
-        T_low, T_high,
+        T_low, T_high, label,
     )
     return {
         _poly_key("muLogCoeffs"): mu_log_coeffs,
@@ -817,6 +820,11 @@ class ThermoDatabase:
         self, composition: Dict[str, float], basis: str, T_low: float,
         T_high: float,
     ) -> dict:
+        if self.mechanism.gas.transport_model == "none":
+            raise ValueError(
+                f"mechanism {self.mechanism.mechanism_path} has no transport "
+                f"data for the {self.transport_model} transport fit"
+            )
         formatter = _TRANSPORT_MODEL_FORMATTERS[self.transport_model]
         gas = self.mechanism.restricted(list(composition))
         Y = Mechanism.mass_fractions_of(gas, composition, basis)
@@ -834,4 +842,6 @@ class ThermoDatabase:
             gas.TPY = T, pressure, Y
             return gas.cp_mass
 
-        return formatter(mu_func, kappa_func, cp_func, T_low, T_high)
+        return formatter(
+            mu_func, kappa_func, cp_func, T_low, T_high, "+".join(composition),
+        )
