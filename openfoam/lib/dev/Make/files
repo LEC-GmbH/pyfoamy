@@ -2,4 +2,8 @@ laminarFlameSpeeds/piecewisePhi/piecewisePhi.C
 
 Function2/nonUniformTable2/nonUniformTable2.C
 
+thermos/pyfoamyPengRobinsonGasThermos.C
+
+chemistry/pyfoamyPengRobinsonGasChemistryModels.C
+
 LIB = $(FOAM_USER_LIBBIN)/libpyfoamy

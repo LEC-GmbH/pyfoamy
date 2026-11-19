@@ -1,0 +1,5 @@
+EXE_INC = \
+    -I$(PYFOAMY_LIB_SRC)/equationOfState/pyfoamyPengRobinsonGas \
+    -I$(LIB_SRC)/thermophysicalModels/specie/lnInclude
+
+EXE_LIBS = -lspecie

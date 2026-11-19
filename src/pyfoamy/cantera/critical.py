@@ -2,6 +2,7 @@
 
 import dataclasses
 import enum
+import math
 import re
 from pathlib import Path
 from typing import Dict, Optional
@@ -12,6 +13,11 @@ from pyfoamy.cantera.mechanism import Mechanism, require_cantera
 # Boltzmann constant [J/K], universal gas constant [J/kmol/K]
 _KB = 1.380649e-23
 _RR = 8314.46
+
+# Cantera's PengRobinsonPhase, as pyfoamyPengRobinsonGas
+_OMEGA_A = 0.45723552892138218
+_OMEGA_B = 0.0777960739038885
+_OMEGA_SPLIT = 0.491
 
 
 class Source(enum.Enum):
@@ -31,33 +37,28 @@ class Critical:
     Args:
         Tc: Critical temperature [K].
         Pc: Critical pressure [Pa].
-        Vc: Critical molar volume [m^3/kmol].
         omega: Acentric factor [-].
         source: Where the data come from.
     """
     Tc: float
     Pc: float
-    Vc: float
     omega: float
     source: Source = Source.GIVEN
 
     def to_dict(self) -> dict:
-        """Returns the `equationOfState` sub-dict of `PengRobinsonGas`."""
-        return {
-            "Tc": self.Tc, "Vc": self.Vc, "Pc": self.Pc,
-            "omega": self.omega,
-        }
+        """Returns the `equationOfState` sub-dict of `pyfoamyPengRobinsonGas`."""
+        return {"Tc": self.Tc, "Pc": self.Pc, "omega": self.omega}
 
 
 #: OpenFOAM's liquidProperties: the species Cantera's database lacks.
 OPENFOAM = {
-    "H2O": Critical(647.13, 2.2055e7, 0.05595, 0.3449),
-    "N2": Critical(126.10, 3.3944e6, 0.0901, 0.0403),
-    "AR": Critical(150.86, 4.8981e6, 0.07459, 0.0),
-    "NH3": Critical(405.65, 1.1278e7, 0.07247, 0.2520),
-    "C2H6": Critical(305.32, 4.872e6, 0.14550, 0.0995),
-    "C3H8": Critical(369.83, 4.248e6, 0.2, 0.1523),
-    "CH3OH": Critical(512.58, 8.0959e6, 0.1178, 0.5656),
+    "H2O": Critical(647.13, 2.2055e7, 0.3449),
+    "N2": Critical(126.10, 3.3944e6, 0.0403),
+    "AR": Critical(150.86, 4.8981e6, 0.0),
+    "NH3": Critical(405.65, 1.1278e7, 0.2520),
+    "C2H6": Critical(305.32, 4.872e6, 0.0995),
+    "C3H8": Critical(369.83, 4.248e6, 0.1523),
+    "CH3OH": Critical(512.58, 8.0959e6, 0.5656),
 }
 
 _DATABASE = "critical-properties.yaml"
@@ -79,14 +80,12 @@ def _cantera_database() -> dict:
 
 
 def _from_parameters(params, source: Source) -> Critical:
-    Tc = float(params["critical-temperature"])
-    Pc = float(params["critical-pressure"])
-    if "critical-molar-volume" in params:
-        Vc = float(params["critical-molar-volume"])
-    else:
-        Zc = float(params.get("critical-compressibility", 0.29))
-        Vc = Zc*_RR*Tc/Pc
-    return Critical(Tc, Pc, Vc, float(params["acentric-factor"]), source)
+    return Critical(
+        float(params["critical-temperature"]),
+        float(params["critical-pressure"]),
+        float(params["acentric-factor"]),
+        source,
+    )
 
 
 def lookup(
@@ -96,7 +95,7 @@ def lookup(
 
     The first found of: `given`, the mechanism's `critical-parameters`,
     `OPENFOAM`, Cantera's database, an estimate from the Lennard-Jones
-    parameters (Tc and Vc as Chung et al., omega 0).
+    parameters (Tc and Vc as Chung et al., Zc 0.291, omega 0).
 
     Args:
         mechanism: A `Mechanism` or a mechanism path.
@@ -142,32 +141,68 @@ def lookup(
             Tc = 1.2593*transport.well_depth/_KB
             Vc = (transport.diameter*1e10/0.809)**3*1e-3
             result[sp.name] = Critical(
-                Tc, 0.291*_RR*Tc/Vc, Vc, 0.0, Source.LENNARD_JONES,
+                Tc, 0.291*_RR*Tc/Vc, 0.0, Source.LENNARD_JONES,
             )
     return result
+
+
+def kappa(omega: float) -> float:
+    """Peng-Robinson kappa of an acentric factor, Cantera's two fits."""
+    if omega <= _OMEGA_SPLIT:
+        return 0.37464 + omega*(1.54226 - 0.26992*omega)
+    return 0.374642 + omega*(1.487503 + omega*(-0.164423 + 0.016666*omega))
+
+
+def _omega(kappa_: float) -> float:
+    # Inverse of kappa(); the fits do not meet at the split, between them
+    # no omega exists and the split is taken.
+    if kappa_ <= kappa(_OMEGA_SPLIT):
+        c = kappa_ - 0.37464
+        return 2*c/(1.54226 + math.sqrt(1.54226**2 - 4*0.26992*c))
+    omega = _OMEGA_SPLIT
+    if kappa_ < kappa(math.nextafter(_OMEGA_SPLIT, 1)):
+        return omega
+    # The cubic fit rises monotonically: Newton from the split converges.
+    for _ in range(50):
+        step = (kappa(omega) - kappa_)/(
+            1.487503 + omega*(-0.328846 + 0.049998*omega)
+        )
+        omega -= step
+        if abs(step) < 1e-15*max(1.0, abs(omega)):
+            break
+    return omega
 
 
 def lump(
     data: Dict[str, Critical], mole_fractions: Dict[str, float],
 ) -> Critical:
-    """Critical data of a mixture, mixed as OpenFOAM's
-    `PengRobinsonGas::operator+=` does (Kay's rule): Tc, Vc, Zc and omega
-    linear in the mole fractions, Pc from them.
+    """Critical data of a mixture, mixed as `pyfoamyPengRobinsonGas` does.
+
+    Van der Waals one-fluid mixing with zero binary interaction parameters:
+    sqrt(a alpha) = A0 - A1 sqrt(T) and b are mole-fraction linear. The
+    result is the pseudo-specie whose Tc, Pc and omega give the mixture's
+    A0, A1 and b, so mixing it again in OpenFOAM is exact. Where the
+    mixture's kappa falls between Cantera's two fits (omega 0.491, a gap of
+    5.2e-4 in kappa) omega is 0.491.
 
     Args:
         data: `{specie: Critical}`, e.g. from `lookup()`.
         mole_fractions: `{specie: fraction}`; need not sum to 1.
     """
     total = sum(mole_fractions.values())
-    Tc = Vc = Zc = omega = 0
+    A0 = A1 = b = 0.0
     for name, x in mole_fractions.items():
         c = data[name]
         x /= total
-        Tc += x*c.Tc
-        Vc += x*c.Vc
-        Zc += x*c.Pc*c.Vc/(_RR*c.Tc)
-        omega += x*c.omega
-    return Critical(Tc, _RR*Zc*Tc/Vc, Vc, omega)
+        sqrt_a = math.sqrt(_OMEGA_A/c.Pc)*_RR*c.Tc
+        k = kappa(c.omega)
+        A0 += x*sqrt_a*(1 + k)
+        A1 += x*sqrt_a*k/math.sqrt(c.Tc)
+        b += x*_OMEGA_B*_RR*c.Tc/c.Pc
+    Tc = (A0/(A1 + math.sqrt(_OMEGA_A*_RR*b/_OMEGA_B)))**2
+    Pc = _OMEGA_B*_RR*Tc/b
+    sqrt_a = math.sqrt(_OMEGA_A/Pc)*_RR*Tc
+    return Critical(Tc, Pc, _omega(A1*math.sqrt(Tc)/sqrt_a))
 
 
 def summary(data: Dict[str, Critical]) -> str:

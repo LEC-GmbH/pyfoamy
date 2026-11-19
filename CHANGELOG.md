@@ -5,6 +5,17 @@ minor version can change the API.
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-18
+
+- `pyfoamyPengRobinsonGas` in `libpyfoamy`: Peng-Robinson with van der
+  Waals one-fluid mixing and Cantera's constants, tested against Cantera's
+  `PengRobinsonPhase`; thermo packages for `fluid`, `multicomponentFluid`
+  (coefficient mixtures with perfect-gas specie properties) and `XiFluid`,
+  and the `Standard` chemistry, for the logPolynomial/janaf thermo type.
+- `critical.lump()` mixes one-fluid; `Critical` has no `Vc`: the critical
+  data written are those of `pyfoamyPengRobinsonGas`, no longer of
+  OpenFOAM's `PengRobinsonGas` (breaking).
+
 ## 0.3.0 - 2026-11-18
 
 First public release.

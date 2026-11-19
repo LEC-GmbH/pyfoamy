@@ -1,0 +1,3 @@
+Test-pyfoamyIdealSpecieThermo.C
+
+EXE = $(PYFOAMY_TEST_BIN)/Test-pyfoamyIdealSpecieThermo

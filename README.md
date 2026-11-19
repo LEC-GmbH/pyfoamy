@@ -65,9 +65,11 @@ from Python.
 
 `openfoam/` holds C++ that pyfoamy builds with `wmake` on first use for the
 sourced OpenFOAM: `libpyfoamy` (the `piecewisePhi` laminar flame speed, the
-`nonUniformTable2` Function2, and for release 14 the `pLog` reaction rate and
-XiFluid mixtures), which generated cases load, and a native mesh and field
-reader. It is not part of the Python package.
+`nonUniformTable2` Function2, the `pyfoamyPengRobinsonGas` equation of state
+with its thermo packages and chemistry, and for release 14 the `pLog`
+reaction rate and XiFluid mixtures), which generated cases load, and a
+native mesh and field reader; `openfoam/test/` has the test programs. It is
+not part of the Python package.
 
 ## Status
 

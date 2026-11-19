@@ -1,0 +1,86 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  14
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      physicalProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// the spray tutorial's species and pressure, a heated droplet's T
+thermoType
+{
+    type            hePsiThermo;
+    mixture         multicomponentMixture;
+    transport       logPolynomial;
+    thermo          janaf;
+    equationOfState pyfoamyPengRobinsonGas;
+    specie          specie;
+    energy          sensibleEnthalpy;
+}
+
+defaultSpecie   N2;
+
+species         ( N2 NC12H26 );
+
+N2
+{
+    specie
+    {
+        molWeight       28.014;
+        nMoles          1;
+    }
+    thermodynamics
+    {
+        Tlow            250;
+        Thigh           3500;
+        Tcommon         1243.005;
+        highCpCoeffs    ( 2.78605389504754 0.00168140657478736 -6.68699854002156e-07 1.25686542573021e-10 -9.22072024403918e-15 -849.857000022085 6.8253091389605 );
+        lowCpCoeffs     ( 3.72298335045355 -0.00162942585447251 3.57061853693545e-06 -2.11406181947631e-09 3.80322748637472e-13 -1065.13244317532 2.19114086389843 );
+    }
+    transport
+    {
+        muLogCoeffs<8>  ( -54.8254587924823 33.2209264125006 -11.7177340783945 2.43183189575774 -0.313134078617696 0.0248208671136458 -0.00111106532441608 2.14759801702196e-05 );
+        kappaLogCoeffs<8> ( 9.60430582843167 -7.44884589234016 0.263007735021814 0.535075646152971 -0.13967697016256 0.0158834887451531 -0.000888559264602814 1.99930069088538e-05 );
+    }
+    elements
+    {
+        N               2;
+    }
+    equationOfState { Tc 126.2; Pc 3.39e6; omega 0.0377; }
+}
+
+NC12H26
+{
+    specie
+    {
+        molWeight       170.34;
+        nMoles          1;
+    }
+    thermodynamics
+    {
+        Tlow            250;
+        Thigh           3500;
+        Tcommon         1243.005;
+        highCpCoeffs    ( 30.0270421221461 0.0709449846839227 -2.82777111638473e-05 5.42899670937949e-09 -4.15414836670722e-13 -51077.9840828702 -124.721552669551 );
+        lowCpCoeffs     ( -2.62181594000469 0.147237711000031 -9.43970271000713e-05 3.07441268000673e-08 -4.03602230002251e-12 -40065.4252999995 50.1126255865463 );
+    }
+    transport
+    {
+        muLogCoeffs<8>  ( 78.4099083978962 -24.3141567633176 -14.6766202562626 8.47239500817763 -1.78192946090796 0.191663659228132 -0.0105976622091579 0.00024025475944658 );
+        kappaLogCoeffs<8> ( 13898.4975778568 -13569.2648116018 5662.346587555 -1310.42121316877 181.710978211735 -15.099831576359 0.696291606226551 -0.0137452220361451 );
+    }
+    elements
+    {
+        C               12;
+        H               26;
+    }
+    equationOfState { Tc 658; Pc 1.82e6; omega 0.5764; }
+}

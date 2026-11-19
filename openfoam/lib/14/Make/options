@@ -6,11 +6,15 @@ EXE_INC = \
     -I$(LIB_SRC)/thermophysicalModels/specie/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/multicomponentThermo/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/chemistryModel/lnInclude \
-    -I$(LIB_SRC)/thermophysicalModels/functions/Polynomial
+    -I$(LIB_SRC)/thermophysicalModels/functions/Polynomial \
+    -I$(LIB_SRC)/ODE/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
 
 LIB_LIBS = \
     -lXiFluidSolver \
     -lfiniteVolume \
     -lspecie \
     -lmulticomponentThermophysicalModels \
-    -lchemistryModel
+    -lfluidThermophysicalModels \
+    -lchemistryModel \
+    -lODE
