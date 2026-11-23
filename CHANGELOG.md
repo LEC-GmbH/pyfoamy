@@ -5,6 +5,11 @@ minor version can change the API.
 
 ## Unreleased
 
+## 0.4.3 - 2026-11-23
+
+- A live `Runner.run()` prints `running <app>`, with the suffix and, in
+  parallel, the number of cores.
+
 ## 0.4.2 - 2026-11-23
 
 - Python ints and floats convert to `Label`/`Number` without the parser,

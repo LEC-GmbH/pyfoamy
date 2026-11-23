@@ -33,6 +33,21 @@ def test_live_run_writes_a_log_file_at_the_case_root(tmp_path):
     assert "hello" in log.read_text()
 
 
+def test_live_run_prints_a_status_line(tmp_path, capsys):
+    Runner(tmp_path).run(PYTHON, args=TRUE_ARGS, suffix="first")
+    assert capsys.readouterr().out == (
+        f"running {Path(PYTHON).name} with suffix first\n"
+    )
+
+
+def test_parallel_live_run_prints_the_number_of_cores(tmp_path, capsys):
+    runner = Runner(tmp_path, np=3, mpi_command=("env",))
+    runner.run(_write_noop_script(tmp_path), parallel=True)
+    assert capsys.readouterr().out == (
+        "running noopApp in parallel on 3 cores\n"
+    )
+
+
 def test_live_run_uses_the_app_basename_and_suffix_for_the_log_name(
     tmp_path,
 ):

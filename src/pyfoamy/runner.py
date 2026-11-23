@@ -135,6 +135,9 @@ class Runner:
     ) -> Optional[int]:
         """Runs (or records) an application, like `runApplication`.
 
+        A live run first prints `running <app>`, with ` with suffix
+        <suffix>` and ` in parallel on <N> cores` where they apply.
+
         Args:
             command: Application name, e.g. `"blockMesh"`.
             args: Positional arguments; non-`str` values are rendered like
@@ -268,16 +271,21 @@ class Runner:
             return None
 
         command = list(argv)
+        info = f"running {Path(argv[0]).name}"
+        if suffix:
+            info += f" with suffix {suffix}"
         if parallel:
             n = np if np is not None else self.np
             if n is None:
                 n = self._number_of_subdomains()
+            info += f" in parallel on {n} cores"
             command = (
                 [word.format(np=n) for word in self.mpi_command]
                 + [command[0], "-parallel"] + command[1:]
             )
         else:
             command = list(self.serial_command) + command
+        print(info, flush=True)
 
         merged_env = {**os.environ, **self.env, **(env or {})}
         file_mode = "a" if append else "w"
