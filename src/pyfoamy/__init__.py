@@ -6,7 +6,7 @@ core stack here would burden even `pyfoamy.cantera`/`pyfoamy.pyjac`,
 which are meant to stay lightweight.
 """
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 
 __all__ = [
     "Case",

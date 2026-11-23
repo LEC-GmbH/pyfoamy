@@ -224,6 +224,13 @@ def _no_word_continuation(s, loc, toks):
     )
 
 
+def _is_number(value) -> bool:
+    # Built from str() without parsing: it is what the grammar accepts as
+    # is, except Decimal's "NaN"/"Infinity", which keep being parsed.
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            or isinstance(value, Decimal) and value.is_finite())
+
+
 class Label(int):
     """An OpenFOAM LABEL; matched before `Number`, which decides the type.
 
@@ -240,6 +247,8 @@ class Label(int):
     grammar.add_condition(_no_word_continuation)
 
     def __new__(cls, value):
+        if isinstance(value, int) and not isinstance(value, bool):
+            return super().__new__(cls, value)
         text = str(value)
         try:
             matched = cls.grammar.parse_string(text, parse_all=True)
@@ -278,6 +287,8 @@ class Number(Decimal):
     grammar.set_name("OpenFOAM SCALAR")
 
     def __new__(cls, value):
+        if _is_number(value):
+            return super().__new__(cls, str(value))
         text = str(value)
         try:
             matched = cls.grammar.parse_string(text, parse_all=True)
@@ -1264,6 +1275,10 @@ def to_grammar_value(value, *, split: bool = False):
         return String(value)
     if type(value).__module__ == "numpy" and hasattr(value, "tolist"):
         return to_grammar_value(value.tolist(), split=split)
+    if isinstance(value, int):
+        return Label(value)
+    if isinstance(value, float):
+        return Number(value)
     if not isinstance(value, (str, int, float, Decimal)):
         raise TypeError(
             f"cannot convert {type(value).__name__} to an OpenFOAM "

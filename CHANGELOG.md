@@ -5,6 +5,11 @@ minor version can change the API.
 
 ## Unreleased
 
+## 0.4.2 - 2026-11-23
+
+- Python ints and floats convert to `Label`/`Number` without the parser,
+  about 100 times faster, e.g. for large lists of points.
+
 ## 0.4.1 - 2026-11-19
 
 - `python -m pyfoamy.cantera`: converts a Cantera YAML, CTI or CHEMKIN

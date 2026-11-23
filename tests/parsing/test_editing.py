@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from pyfoamy.parsing.grammar import (
@@ -185,6 +187,26 @@ def test_to_grammar_value_scalars():
     assert str(to_grammar_value(True)) == "true"
     assert str(to_grammar_value(False)) == "false"
     assert isinstance(to_grammar_value("abc"), Word)
+
+
+@pytest.mark.parametrize("value", [
+    0, -7, 10**30, 0.0, -0.0, 0.1, 160.0, -2.5e-300, 1e20, 1e21,
+    5e-324, float("nan"), float("-inf"), Decimal("5"), Decimal("-0"),
+    Decimal("1.50"), Decimal("1E+2"),
+])
+def test_numbers_convert_as_their_text(value):
+    # The int/float fast paths must give what parsing str(value) gives.
+    expected = to_grammar_value(str(value))
+    got = to_grammar_value(value)
+    assert (type(got), repr(got)) == (type(expected), repr(expected))
+    for cls in (Number, Label):
+        try:
+            expected = cls(str(value))
+        except ValueError:
+            with pytest.raises(ValueError):
+                cls(value)
+        else:
+            assert repr(cls(value)) == repr(expected)
 
 
 def test_to_grammar_value_unsafe_string_raises():
